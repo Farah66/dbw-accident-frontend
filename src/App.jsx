@@ -150,7 +150,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Unfallatlas Deutschland</h1>
+        <h3>Unfallatlas Deutschland</h3>
       </header>
 
       <main className="app-main">
