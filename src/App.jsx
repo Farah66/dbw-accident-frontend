@@ -7,8 +7,6 @@ import {
   getMonthlyStats,
   getTopRankings,
   getBottomRankings,
-  getHighestAccidentRateCity,
-  getDresdenBicycle2024,
   getTopFatalDistricts2024,
   getZeroAccidentMunicipalitiesSaxony2023,
 } from "./api";
@@ -21,9 +19,11 @@ function App() {
   const [monthlyData, setMonthlyData] = useState([]);
   const [topRankings, setTopRankings] = useState([]);
   const [bottomRankings, setBottomRankings] = useState([]);
-  const [highestRateCity, setHighestRateCity] = useState(null);
-  const [dresdenBicycle2024, setDresdenBicycle2024] = useState(null);
+
+  const [goodsVehicle, setGoodsVehicle] = useState(false);
+  const [motorcycle, setMotorcycle] = useState(false);
   const [topFatalDistricts2024, setTopFatalDistricts2024] = useState([]);
+
   const [showZeroMunicipalitiesPanel, setShowZeroMunicipalitiesPanel] =
     useState(false);
 
@@ -51,7 +51,7 @@ function App() {
   const [showCountryOutline, setShowCountryOutline] = useState(false);
   const [showBaseMap, setShowBaseMap] = useState(true);
   const [showAccidentFrequencies, setShowAccidentFrequencies] =
-    useState(false);
+    useState(true);
   const [showFatalDistrictsPanel, setShowFatalDistrictsPanel] =
     useState(false);
 
@@ -71,6 +71,8 @@ function App() {
     setBicycle(params.get("bicycle") === "true");
     setPedestrian(params.get("pedestrian") === "true");
     setCar(params.get("car") === "true");
+    setGoodsVehicle(params.get("goodsVehicle") === "true");
+    setMotorcycle(params.get("motorcycle") === "true");
   }, []);
 
   useEffect(() => {
@@ -84,6 +86,8 @@ function App() {
     if (bicycle) params.set("bicycle", "true");
     if (pedestrian) params.set("pedestrian", "true");
     if (car) params.set("car", "true");
+    if (goodsVehicle) params.set("goodsVehicle", "true");
+    if (motorcycle) params.set("motorcycle", "true");
 
     const queryString = params.toString();
     const newUrl = queryString
@@ -91,16 +95,41 @@ function App() {
       : window.location.pathname;
 
     window.history.replaceState({}, "", newUrl);
-  }, [year, stateCode, month, category, bicycle, pedestrian, car]);
+  }, [
+    year,
+    stateCode,
+    month,
+    category,
+    bicycle,
+    pedestrian,
+    car,
+    goodsVehicle,
+    motorcycle,
+  ]);
 
   function resetAccidentFilters() {
     setBicycle(false);
     setPedestrian(false);
     setCar(false);
+    setGoodsVehicle(false);
+    setMotorcycle(false);
     setCategory("");
   }
 
+  function selectAccidentType(type) {
+    resetAccidentFilters();
+
+    if (type === "car") setCar(true);
+    if (type === "goodsVehicle") setGoodsVehicle(true);
+    if (type === "motorcycle") setMotorcycle(true);
+    if (type === "bicycle") setBicycle(true);
+    if (type === "pedestrian") setPedestrian(true);
+    if (type === "killed") setCategory("1");
+    if (type === "injury") setCategory("injury");
+  }
+
   async function handleSearch() {
+    try {
     const filters = {
       year,
       limit: 3000,
@@ -112,6 +141,8 @@ function App() {
     if (bicycle) filters.bicycle = true;
     if (pedestrian) filters.pedestrian = true;
     if (car) filters.car = true;
+    if (goodsVehicle) filters.goodsVehicle = true;
+    if (motorcycle) filters.motorcycle = true;
 
     const result = await getAccidents(filters);
 
@@ -127,9 +158,8 @@ function App() {
 
     const topRankingResult = await getTopRankings(10);
     const bottomRankingResult = await getBottomRankings(10);
-    const highestRateCityResult = await getHighestAccidentRateCity();
-    const dresdenBicycle2024Result = await getDresdenBicycle2024();
     const topFatalDistricts2024Result = await getTopFatalDistricts2024();
+
     const zeroAccidentMunicipalitiesSaxony2023Result =
       await getZeroAccidentMunicipalitiesSaxony2023();
 
@@ -139,12 +169,13 @@ function App() {
     setMonthlyData(monthlyResult);
     setTopRankings(topRankingResult || []);
     setBottomRankings(bottomRankingResult || []);
-    setHighestRateCity(highestRateCityResult);
-    setDresdenBicycle2024(dresdenBicycle2024Result);
     setTopFatalDistricts2024(topFatalDistricts2024Result || []);
     setZeroAccidentMunicipalitiesSaxony2023(
       zeroAccidentMunicipalitiesSaxony2023Result.municipalities || []
     );
+   } catch (error) {
+    console.error("Error loading accident data:", error);
+    }
   }
 
   return (
@@ -157,9 +188,6 @@ function App() {
         <aside className="sidebar">
           <div className="sidebar-header">
             <span>Menu:</span>
-            <button className="collapse-btn" type="button">
-              −
-            </button>
           </div>
 
           <div className="map-extent-row">
@@ -222,8 +250,15 @@ function App() {
                   <input
                     type="radio"
                     name="accidentType"
-                    checked={!bicycle && !pedestrian && !car && category === ""}
-                    onChange={resetAccidentFilters}
+                    checked={
+                      !bicycle &&
+                      !pedestrian &&
+                      !car &&
+                      !goodsVehicle &&
+                      !motorcycle &&
+                      category === ""
+                    }
+                    onChange={() => selectAccidentType("all")}
                   />
                   All accidents
                 </label>
@@ -233,12 +268,7 @@ function App() {
                     type="radio"
                     name="accidentType"
                     checked={car}
-                    onChange={() => {
-                      setCar(true);
-                      setBicycle(false);
-                      setPedestrian(false);
-                      setCategory("");
-                    }}
+                    onChange={() => selectAccidentType("car")}
                   />
                   Accidents involving passenger cars
                 </label>
@@ -247,7 +277,8 @@ function App() {
                   <input
                     type="radio"
                     name="accidentType"
-                    onChange={resetAccidentFilters}
+                    checked={goodsVehicle}
+                    onChange={() => selectAccidentType("goodsVehicle")}
                   />
                   Accidents involving goods road vehicles
                 </label>
@@ -256,7 +287,8 @@ function App() {
                   <input
                     type="radio"
                     name="accidentType"
-                    onChange={resetAccidentFilters}
+                    checked={motorcycle}
+                    onChange={() => selectAccidentType("motorcycle")}
                   />
                   Accidents involving motorcycles
                 </label>
@@ -266,12 +298,7 @@ function App() {
                     type="radio"
                     name="accidentType"
                     checked={bicycle}
-                    onChange={() => {
-                      setBicycle(true);
-                      setCar(false);
-                      setPedestrian(false);
-                      setCategory("");
-                    }}
+                    onChange={() => selectAccidentType("bicycle")}
                   />
                   Accidents involving bicycles
                 </label>
@@ -281,12 +308,7 @@ function App() {
                     type="radio"
                     name="accidentType"
                     checked={pedestrian}
-                    onChange={() => {
-                      setPedestrian(true);
-                      setCar(false);
-                      setBicycle(false);
-                      setCategory("");
-                    }}
+                    onChange={() => selectAccidentType("pedestrian")}
                   />
                   Accidents involving pedestrians
                 </label>
@@ -296,12 +318,7 @@ function App() {
                     type="radio"
                     name="accidentType"
                     checked={category === "1"}
-                    onChange={() => {
-                      setCategory("1");
-                      setBicycle(false);
-                      setPedestrian(false);
-                      setCar(false);
-                    }}
+                    onChange={() => selectAccidentType("killed")}
                   />
                   Accidents with persons killed
                 </label>
@@ -311,12 +328,7 @@ function App() {
                     type="radio"
                     name="accidentType"
                     checked={category === "injury"}
-                    onChange={() => {
-                      setCategory("injury");
-                      setBicycle(false);
-                      setPedestrian(false);
-                      setCar(false);
-                    }}
+                    onChange={() => selectAccidentType("injury")}
                   />
                   Accidents with personal injury
                 </label>
@@ -444,32 +456,6 @@ function App() {
             <p>Car accidents: {summary.car}</p>
             <p>Matching accidents: {count}</p>
             <p>Shown on map: {accidents.length}</p>
-          </div>
-
-          <div className="summary-panel">
-            <h3>Additional Questions</h3>
-
-            {dresdenBicycle2024 ? (
-              <p>
-                <strong>Dresden bicycle accidents 2024:</strong>{" "}
-                {dresdenBicycle2024.bicycle_accidents}
-              </p>
-            ) : (
-              <p>Dresden bicycle accidents 2024: No data loaded yet.</p>
-            )}
-
-            <p>
-              <strong>Highest accident rate city:</strong>
-            </p>
-
-            {highestRateCity ? (
-              <p>
-                {highestRateCity.region_name}: {highestRateCity.value} accidents
-                per 10,000 inhabitants
-              </p>
-            ) : (
-              <p>No data loaded yet.</p>
-            )}
           </div>
 
           <MonthlyChart data={monthlyData} />

@@ -22,7 +22,7 @@ function AccidentRatesComparisonChart({ topRankings = [], bottomRankings = [] })
 
   return (
     <div className="rates-comparison-card">
-      <h3>Top vs Bottom Accident Rates</h3>
+      <h3>Top vs Bottom Accident Rates 2023</h3>
 
       <ResponsiveContainer width="100%" height={370}>
         <LineChart
